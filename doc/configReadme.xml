@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <configuration>
 	<placeholders>
-		<placeholder id="template_name">Workday Salesforce Case Broadcast</placeholder>
+		<placeholder id="template_name">Workday Salesforce Worker Case Broadcast</placeholder>
 	</placeholders>
 	<sections>
 		<section id="use_case">
@@ -27,7 +27,7 @@ Once your app is all set and started, there is no need to do anything else. Ever
 		</section>
 		<section id="application_configuration">
 		<![CDATA[
-# Properties to be used across all the environments. They can be overwritten.
+#### Properties to be used across all the environments. They can be overwritten.
 + poll.frequencyMillis `10000`
 + poll.startDelayMillis `500`
 + poll.offset `3000`

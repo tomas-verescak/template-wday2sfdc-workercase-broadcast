@@ -1,5 +1,5 @@
 
-# Anypoint Template: Workday Salesforce Case Broadcast
+# Anypoint Template: Workday Salesforce Worker Case Broadcast
 
 + [License Agreement](#licenseagreement)
 + [Use Case](#usecase)
@@ -75,7 +75,7 @@ There are no particular considerations for this Anypoint Template regarding Sieb
 There are no particular considerations for this Anypoint Template regarding Workday as data origin.
 
 # Run it! <a name="runit"/>
-Simple steps to get Workday Salesforce Case Broadcast running.
+Simple steps to get Workday Salesforce Worker Case Broadcast running.
 
 
 ## Running on premise <a name="runonopremise"/>
@@ -125,7 +125,7 @@ Mule Studio provides you with really easy way to deploy your Template directly t
 ## Properties to be configured (With examples) <a name="propertiestobeconfigured"/>
 In order to use this Mule Anypoint Template you need to configure properties (Credentials, configurations, etc.) either in properties file or in CloudHub as Environment Variables. Detail list with examples:
 ### Application configuration
-# Properties to be used across all the environments. They can be overwritten.
+#### Properties to be used across all the environments. They can be overwritten.
 + poll.frequencyMillis `10000`
 + poll.startDelayMillis `500`
 + poll.offset `3000`

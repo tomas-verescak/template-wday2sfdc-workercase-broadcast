@@ -30,11 +30,11 @@ public class WorkersRequest {
 		cal.setTime(startDate);
 		cal.add(Calendar.SECOND, - offset / 1000);
 		dateRangeData.setUpdatedThrough(xmlDate(cal.getTime()));
-		System.out.println("throu:" + cal.getTime());
+		
 		cal.setTime(startDate);
 		cal.add(Calendar.SECOND, - (periodInMillis + offset) / 1000 );		
 		dateRangeData.setUpdatedFrom(xmlDate(cal.getTime()));
-		System.out.println("from:" + cal.getTime());
+		
 		TransactionLogCriteriaType transactionLogCriteria = new TransactionLogCriteriaType();
 		transactionLogCriteria.setTransactionDateRangeData(dateRangeData);
 		

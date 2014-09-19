@@ -46,7 +46,7 @@ payload.put("Description", ${sfdc.description})]]></expression-component>
                     <sfdc:upsert config-ref="Salesforce" externalIdFieldName="Id" type="Case" doc:name="Upsert Case">
                         <sfdc:objects ref="#[payload]"/>
                     </sfdc:upsert>
-                    <logger message="res: #[payload]" level="INFO" doc:name="Logger"/>
+
                 </batch:commit>
             </batch:step>
         </batch:process-records>

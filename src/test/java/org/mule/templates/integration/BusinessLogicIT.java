@@ -55,7 +55,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 	private BatchTestHelper helper;
 	
     private String EXT_ID, EMAIL = "bwillis@gmailtest.com";
-	private String SFDC_ID;
+	private String SFDC_ID, ACCOUNT_ID, CONTACT_ID;
 	private Employee employee;
     
     @BeforeClass
@@ -131,6 +131,8 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 										getMessage().getPayload();
 		Map<String, Object> caseMap = iterator.next();
 		SFDC_ID = caseMap.get("Id").toString();
+		ACCOUNT_ID = caseMap.get("AccountId").toString();
+		CONTACT_ID = caseMap.get("ContactId").toString();
 		assertEquals("Subject should be synced", employee.getGivenName() + " " + employee.getFamilyName() + " Case", 
 													caseMap.get("Subject"));
 		assertEquals("Email should be synced", EMAIL, caseMap.get("SuppliedEmail"));
@@ -139,14 +141,15 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
     private void deleteTestDataFromSandBox() throws MuleException, Exception {
 		// Delete the created users in SFDC
     	logger.info("deleting test data...");
-		SubflowInterceptingChainLifecycleWrapper deleteUserFromAFlow = getSubFlow("deleteCaseSFDC");
-		deleteUserFromAFlow.initialise();
+		SubflowInterceptingChainLifecycleWrapper deleteFlow = getSubFlow("deleteSFDC");
+		deleteFlow.initialise();
 
 		List<String> idList = new ArrayList<String>();
 		idList.add(SFDC_ID);
-		deleteUserFromAFlow.process(getTestEvent(idList,
+		idList.add(ACCOUNT_ID);
+		idList.add(CONTACT_ID);
+		deleteFlow.process(getTestEvent(idList,
 				MessageExchangePattern.REQUEST_RESPONSE));
-
 		// Delete the created users in Workday
 		SubflowInterceptingChainLifecycleWrapper flow = getSubFlow("getWorkdaytoTerminateFlow");
 		flow.initialise();

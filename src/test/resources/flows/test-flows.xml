@@ -16,14 +16,14 @@ http://www.mulesoft.org/schema/mule/wd-hr http://www.mulesoft.org/schema/mule/wd
     <data-mapper:config name="EmployeeType_To_TerminateEmployeeRequestType" transformationGraphPath="employeetype_to_terminateemployeerequesttype.grf" doc:name="DataMapper"/>
     
     <sub-flow name="retrieveCaseSFDC" doc:name="retrieveCaseSFDC">
-        <sfdc:query config-ref="Salesforce" query="dsql:SELECT Id,Subject,SuppliedEmail FROM Case WHERE ExtId__c = '#[payload]'" doc:name="Salesforce"/>
+        <sfdc:query config-ref="Salesforce" query="dsql:SELECT Id,Subject,SuppliedEmail,AccountId,ContactId FROM Case WHERE ExtId__c = '#[payload]'" doc:name="Salesforce"/>
     </sub-flow>
     <sub-flow name="hireEmployee" doc:name="hireEmployee">
         <data-mapper:transform config-ref="pojo_to_hireemployeerequesttype" doc:name="Jobvite To HireEmployeeRequestType" />
         <wd-staffing:hire-employee config-ref="Workday_Staffing" doc:name="Workday Staffing"/>
                     
     </sub-flow>
-    <sub-flow name="deleteCaseSFDC" doc:name="deleteCaseSFDC">
+    <sub-flow name="deleteSFDC" doc:name="deleteSFDC">
         <sfdc:delete config-ref="Salesforce" doc:name="Salesforce">
             <sfdc:ids ref="#[payload]"/>
         </sfdc:delete>

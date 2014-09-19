@@ -1,0 +1,75 @@
+<?xml version="1.0"?>
+<configuration>
+	<placeholders>
+		<placeholder id="template_name">Workday Salesforce Case Broadcast</placeholder>
+	</placeholders>
+	<sections>
+		<section id="use_case">
+As a Workday admin I want to broadcast Workers to Salesforce Case instances.
+
+This Anypoint Template should serve as a foundation for the process of broadcasting Worker from Workday instance to Salesforce, being able to specify filtering criteria and desired behavior when a case already exists in the destination system. 
+
+As implemented, this Anypoint Template leverages the [Batch Module](http://www.mulesoft.org/documentation/display/current/Batch+Processing).
+The batch job is divided in Input, Process and On Complete stages.
+During the Input stage the Anypoint Template will go to the Workday and query all the existing active workers that match the filter criteria. The criteria is based on manipulations within the given date range.
+The last step of the Process stage will group the cases and create them in Salesforce.
+Finally during the On Complete stage the Anypoint Template will output statistics data into the console. 
+		</section>
+		<section id="considerations">
+<![CDATA[
+There are no special considerations for this Anypoint Template.
+]]>
+		</section>
+		<section id="running_on_cloudhub">
+<![CDATA[
+Once your app is all set and started, there is no need to do anything else. Every time a custom object is created or modified, it will be automatically synchronised to SFDC Org B as long as it has an Email.
+]]>
+		</section>
+		<section id="application_configuration">
+		<![CDATA[
+# Properties to be used across all the environments. They can be overwritten.
++ poll.frequencyMillis `10000`
++ poll.startDelayMillis `500`
++ poll.offset `3000`
+
++ watermark.default.expression `#[groovy: new Date(System.currentTimeMillis() - 10000)]`
+
++ sfdc.description `"Welcome Package"`
+
+#### Workday Connector configuration
++ wday.user `admin@workday`
++ wday.password `secret`
++ wday.endpoint `https://impl-cc.workday.com/ccx/service/workday/Human_Resources/v21.1`
+
+#### Salesforce Connector
++ sfdc.username `user@company.com`
++ sfdc.password `secret`
++ sfdc.securityToken `1234fdkfdkso20kw2sd`
++ sfdc.url `https://login.salesforce.com/services/Soap/u/28.0`
+
+]]>
+		</section>
+		<section id="api_calls">
+		<![CDATA[
+Salesforce imposes limits on the number of API Calls that can be made. Therefore calculating this amount may be an important factor to consider. The Anypoint Template calls to the API can be calculated using the formula:
+
+***1 + X + X / 200***
+
+Being ***X*** the number of Users to be synchronized on each run. 
+
+The division by ***200*** is because, by default, Users are gathered in groups of 200 for each Upsert API Call in the commit step. Also consider that this calls are executed repeatedly every polling cycle.	
+
+For instance if 10 records are fetched from origin instance, then 12 api calls will be made (1 + 10 + 1).
+]]>
+		</section>
+		<section id="default_business_logic_xml">
+		<![CDATA[
+Functional aspect of the Anypoint Template is implemented on this XML, directed by one flow that will poll for Workday creations/updates. The severeal message processors constitute four high level actions that fully implement the logic of this Anypoint Template:
+1. At first the Anypoint Template will go to the Workday and query all the existing workers that match the filter criteria.
+2. During the Process stage, each Workday Worker will be filtered depending on, if it has an existing matching case in the SFDC Organization. The logic ensures matching worker with an account and a contact (and creating if it does not exist).
+3. The last step of the Process stage will group the cases and create/update them in SFDC Organization.
+Finally during the On Complete stage the Anypoint Template will log output statistics data into the console.
+]]>
+		</section>
+	</sections>
+</configuration>

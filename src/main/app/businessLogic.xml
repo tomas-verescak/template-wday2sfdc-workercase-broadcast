@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:data-mapper="http://www.mulesoft.org/schema/mule/ee/data-mapper" xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:wd-hr="http://www.mulesoft.org/schema/mule/wd-hr" xmlns:sfdc="http://www.mulesoft.org/schema/mule/sfdc" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking"
+      xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:spring="http://www.springframework.org/schema/beans"
+      version="EE-3.5.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/wd-hr http://www.mulesoft.org/schema/mule/wd-hr/current/mule-wd-hr.xsd
+http://www.mulesoft.org/schema/mule/sfdc http://www.mulesoft.org/schema/mule/sfdc/current/mule-sfdc.xsd
+http://www.mulesoft.org/schema/mule/ee/data-mapper http://www.mulesoft.org/schema/mule/ee/data-mapper/current/mule-data-mapper.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd">
+    
+    <batch:job name="businessLogicBatch1">
+        <batch:threading-profile poolExhaustedAction="WAIT"/>
+        <batch:process-records>
+            <batch:step name="Map_Workday_Worker_To_Case">
+                <enricher source="payload" target="recordVars['organizationName']" doc:name="Store 'organizationName' in recordVars">
+                    <component class="org.mule.kicks.OrganizationExtractor" doc:name="Extract Organization Name"/>
+                </enricher>
+                <data-mapper:transform config-ref="List_WorkerType__To_List_Case_" doc:name="List&lt;WorkerType&gt; To List&lt;Case&gt;"/>
+                <set-payload value="#[payload[0]]" doc:name="Set Payload"/>
+        
+            </batch:step>
+            <batch:step name="Get_Case_If_Exists" accept-expression="#[payload[&quot;ExtId__c&quot;] != null]">
+                <enricher source="payload" target="recordVars['caseInSalesforce']" doc:name="store in recordVars['caseInSalesforce']">
+                    <sfdc:query-single config-ref="Salesforce" query="SELECT Id FROM Case WHERE ExtId__c = '#[payload[&quot;ExtId__c&quot;]]' and ExtId__c != null" doc:name="Salesforce"/>
+                </enricher>
+            </batch:step>
+            <batch:step name="Get_Account_Id">
+                <flow-ref name="findOrCreateAccountFlow" doc:name="Trigger findOrCreateAccountFlow"/>
+            </batch:step>
+            <batch:step name="Get_Contact_Id">
+                <flow-ref name="findOrCreateContactFlow" doc:name="Trigger findOrCreateContactFlow"/>
+            </batch:step>
+            <batch:step name="Upsert_Case_To_Salesforce">
+                <expression-component doc:name="Expression"><![CDATA[payload.put("Id", recordVars['caseInSalesforce'] is NullPayload ? null : recordVars['caseInSalesforce']['Id']);
+payload.put("Description", ${sfdc.description})]]></expression-component>
+                <logger message="Case to be upserted: #[payload]" level="INFO" doc:name="Log Case map"/>
+                <batch:commit size="200" doc:name="Batch Commit">
+                    <sfdc:upsert config-ref="Salesforce" externalIdFieldName="Id" type="Case" doc:name="Upsert Case">
+                        <sfdc:objects ref="#[payload]"/>
+                    </sfdc:upsert>
+                    <logger message="res: #[payload]" level="INFO" doc:name="Logger"/>
+                </batch:commit>
+            </batch:step>
+        </batch:process-records>
+        <batch:on-complete>
+            <json:object-to-json-transformer doc:name="Batch result to JSON"/>
+            <logger message="Batch completed: #[payload]" level="INFO" doc:name="Logger"/>
+        </batch:on-complete>
+    </batch:job>
+    <sub-flow name="findOrCreateContactFlow" doc:name="findOrCreateContactFlow" >
+       <enricher source="#[payload]" target="#[flowVars['contact']]" doc:name="store result in account">
+              <sfdc:query-single config-ref="Salesforce" query="SELECT Id, Name FROM Contact WHERE Email = '#[payload['SuppliedEmail']]'" doc:name="query Account in  Salesforce Instance"/>
+          </enricher>
+          <choice doc:name="Choice">
+              <when expression="#[flowVars['contact'] is NullPayload]">
+                  <flow-ref name="createContactFlow" doc:name="trigger CreateContactFlow"/>
+              </when>
+              <otherwise>
+                  <enricher target="#[recordVars['idOfContact']]" doc:name="store result in idOfContact">
+                      <expression-transformer expression="#[flowVars['contact']['Id']]" doc:name="get new contact id"/>
+                  </enricher>
+              </otherwise>
+          </choice>
+          <expression-component doc:name="set ContactId"><![CDATA[payload['ContactId']= recordVars['idOfContact'];
+]]></expression-component>            
+    </sub-flow>
+	<sub-flow name="findOrCreateAccountFlow" doc:name="findOrCreateAccountFlow">
+        <choice doc:name="Choice">
+            <when expression="#[recordVars['organizationName'] != null]">
+                <enricher source="#[payload]" target="#[flowVars['account']]" doc:name="store result in account">
+                    <sfdc:query-single config-ref="Salesforce" query="SELECT Id, Name FROM Account WHERE Name = '#[recordVars['organizationName']]'" doc:name="query Account in  Salesforce Instance"/>
+                </enricher>
+                <choice doc:name="Choice">
+                    <when expression="#[flowVars['account'] is NullPayload]">
+                        <flow-ref name="createAccountFlow" doc:name="trigger CreateAccountFlow"/>
+                    </when>
+                    <otherwise>
+                        <enricher target="#[recordVars['idOfAccount']]" doc:name="store result in idOfAccount">
+                            <expression-transformer expression="#[flowVars['account']['Id']]" doc:name="get new account id"/>
+                        </enricher>
+                    </otherwise>
+                </choice>
+                <expression-component doc:name="set AccountId"><![CDATA[payload['AccountId']= recordVars['idOfAccount'];
+]]></expression-component>
+            </when>
+            <otherwise>
+                <logger message="There is no organization for this worker. Doing nothing." level="INFO" doc:name="Logger"/>
+            </otherwise>
+        </choice>
+    </sub-flow>
+    
+    <sub-flow name="createAccountFlow" doc:name="createAccountFlow">
+        <enricher target="#[recordVars['idOfAccount']]" doc:name="store result in idOfAccount">
+            <processor-chain doc:name="Processor Chain">
+                <expression-component doc:name="Expression"><![CDATA[payload = new java.util.ArrayList();
+account = new java.util.HashMap();
+account.put('NumberOfEmployees', 0);
+account.put('Name', recordVars['organizationName']);
+payload.add(account);]]></expression-component>
+
+                <sfdc:create config-ref="Salesforce" type="Account" doc:name="create Account in Salesforce Instance">
+                    <sfdc:objects ref="#[payload]"/>
+                </sfdc:create>
+                <expression-transformer expression="#[payload[0].getId()]" doc:name="get new account id"/>
+            </processor-chain>
+        </enricher>
+    </sub-flow>
+    
+    <sub-flow name="createContactFlow" doc:name="createContactFlow">
+        <enricher target="#[recordVars['idOfContact']]" doc:name="store result in idOfContact">
+            <processor-chain doc:name="Processor Chain">
+                <expression-component doc:name="Expression"><![CDATA[contact = new java.util.HashMap();
+contact.put('LastName', payload['SuppliedName']);
+contact.put('Email', payload['SuppliedEmail']);
+payload = new java.util.ArrayList();
+payload.add(contact);]]></expression-component>
+
+                <sfdc:create config-ref="Salesforce" type="Contact" doc:name="create Contact in Salesforce Instance">
+                    <sfdc:objects ref="#[payload]"/>
+                </sfdc:create>
+                <expression-transformer expression="#[payload[0].getId()]" doc:name="get new account id"/>
+            </processor-chain>
+        </enricher>
+    </sub-flow>
+    
+</mule>

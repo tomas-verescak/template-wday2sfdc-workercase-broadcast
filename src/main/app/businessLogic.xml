@@ -24,12 +24,12 @@ http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mul
                     <component class="org.mule.kicks.OrganizationExtractor" doc:name="Extract Organization Name"/>
                 </enricher>
                 <data-mapper:transform config-ref="List_WorkerType__To_List_Case_" doc:name="List&lt;WorkerType&gt; To List&lt;Case&gt;"/>
-                <set-payload value="#[payload[0]]" doc:name="Set Payload"/>
+                <set-payload value="#[payload[0]]" doc:name="Set Payload To Map"/>
         
             </batch:step>
             <batch:step name="Get_Case_If_Exists" accept-expression="#[payload[&quot;ExtId__c&quot;] != null]">
                 <enricher source="payload" target="recordVars['caseInSalesforce']" doc:name="store in recordVars['caseInSalesforce']">
-                    <sfdc:query-single config-ref="Salesforce" query="SELECT Id FROM Case WHERE ExtId__c = '#[payload[&quot;ExtId__c&quot;]]' and ExtId__c != null" doc:name="Salesforce"/>
+                    <sfdc:query-single config-ref="Salesforce" query="SELECT Id FROM Case WHERE ExtId__c = '#[payload[&quot;ExtId__c&quot;]]' and ExtId__c != null" doc:name="Query Salesforce Case"/>
                 </enricher>
             </batch:step>
             <batch:step name="Get_Account_Id">
@@ -39,7 +39,7 @@ http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mul
                 <flow-ref name="findOrCreateContactFlow" doc:name="Trigger findOrCreateContactFlow"/>
             </batch:step>
             <batch:step name="Upsert_Case_To_Salesforce">
-                <expression-component doc:name="Expression"><![CDATA[payload.put("Id", recordVars['caseInSalesforce'] is NullPayload ? null : recordVars['caseInSalesforce']['Id']);
+                <expression-component doc:name="prepare for Upsert"><![CDATA[payload.put("Id", recordVars['caseInSalesforce'] is NullPayload ? null : recordVars['caseInSalesforce']['Id']);
 payload.put("Description", ${sfdc.description})]]></expression-component>
                 <logger message="Case to be upserted: #[payload]" level="INFO" doc:name="Log Case map"/>
                 <batch:commit size="200" doc:name="Batch Commit">
@@ -52,7 +52,7 @@ payload.put("Description", ${sfdc.description})]]></expression-component>
         </batch:process-records>
         <batch:on-complete>
             <json:object-to-json-transformer doc:name="Batch result to JSON"/>
-            <logger message="Batch completed: #[payload]" level="INFO" doc:name="Logger"/>
+            <logger message="Batch completed: #[payload]" level="INFO" doc:name="Log the batch results"/>
         </batch:on-complete>
     </batch:job>
     <sub-flow name="findOrCreateContactFlow" doc:name="findOrCreateContactFlow" >

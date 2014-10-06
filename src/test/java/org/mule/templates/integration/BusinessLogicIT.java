@@ -63,9 +63,6 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
         System.setProperty("poll.startDelayMillis", "8000");
         System.setProperty("poll.frequencyMillis", "30000");
 
-        // Set default water-mark expression to current time
-//        System.clearProperty("watermark.default.expression");
-//        System.setProperty("watermark.default.expression", "#[groovy: new Date(System.currentTimeMillis() - 1000 * 60 * 60 * 24)]");
     }
 
     @Before

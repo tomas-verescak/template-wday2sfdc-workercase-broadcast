@@ -10916,7 +10916,7 @@
 output.__id = input.__id;
 //END -> DO NOT REMOVE
 output.SuppliedEmail = input.EmailRule;
-output.Subject = input.formattedName + " Case";
+output.Subject = input.firstName_2 + " " + input.lastName_2 + " Case";
 output.Status = "Working";
 output.Origin = "Web";;
 output.ExtId__c = input.IdRule;

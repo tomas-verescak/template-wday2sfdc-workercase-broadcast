@@ -17,7 +17,7 @@ Finally during the On Complete stage the Anypoint Template will output statistic
 		</section>
 		<section id="considerations">
 <![CDATA[
-There are no special considerations for this Anypoint Template.
+Salesforce Customization: It is necessary to add a custom field ExtId (Text 255) to Salesforce Case object. For more information, please see [Salesforce - Create Custom Fields](https://help.salesforce.com/HTViewHelpDoc?id=adding_fields.htm). **Note:** This particular Anypoint Template illustrate the synchronization use case between SalesForce and a Workday.								
 ]]>
 		</section>
 		<section id="running_on_cloudhub">

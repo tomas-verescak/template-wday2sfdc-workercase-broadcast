@@ -31,7 +31,7 @@ http://www.mulesoft.org/schema/mule/sfdc http://www.mulesoft.org/schema/mule/sfd
 			<logger message="Fetching Workday updates...#[flowVars['lastQueryDate']]" level="INFO" doc:name="log 'Fetching workday updates...'"/>
 			<wd-hr:get-workers config-ref="WorkdayHumanResource"
 				doc:name="get Workers from Workday Human Resource"
-				workersRequest-ref="#[org.mule.kicks.WorkersRequest.create(lastQueryDate, ${poll.frequencyMillis}, ${poll.offset})]"></wd-hr:get-workers>
+				workersRequest-ref="#[org.mule.templates.WorkersRequest.create(lastQueryDate, ${poll.frequencyMillis}, ${poll.offset})]"></wd-hr:get-workers>
 
 			</processor-chain>
 		</poll>

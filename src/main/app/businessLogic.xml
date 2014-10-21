@@ -21,7 +21,7 @@ http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mul
         <batch:process-records>
             <batch:step name="Map_Workday_Worker_To_Case">
                 <enricher source="payload" target="recordVars['organizationName']" doc:name="Store 'organizationName' in recordVars">
-                    <component class="org.mule.kicks.OrganizationExtractor" doc:name="Extract Organization Name"/>
+                    <component class="org.mule.templates.OrganizationExtractor" doc:name="Extract Organization Name"/>
                 </enricher>
                 <data-mapper:transform config-ref="List_WorkerType__To_List_Case_" doc:name="List&lt;WorkerType&gt; To List&lt;Case&gt;"/>
                 <set-payload value="#[payload[0]]" doc:name="Set Payload To Map"/>

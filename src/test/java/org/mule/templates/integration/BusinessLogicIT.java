@@ -8,11 +8,13 @@ package org.mule.templates.integration;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
@@ -50,6 +52,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 
 	private static final long TIMEOUT_MILLIS = 30000;
 	private static final long DELAY_MILLIS = 500;
+	private static final String PATH_TO_TEST_PROPERTIES = "./src/test/resources/mule.test.properties";
 	
 	protected static final int TIMEOUT_SEC = 60;
 	private BatchTestHelper helper;
@@ -57,6 +60,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
     private String EXT_ID, EMAIL = "bwillis@gmailtest.com";
 	private String SFDC_ID, ACCOUNT_ID, CONTACT_ID;
 	private Employee employee;
+	private String TERMINATION_ID;
     
     @BeforeClass
     public static void beforeTestClass() {
@@ -67,6 +71,14 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 
     @Before
     public void setUp() throws Exception {
+    	final Properties props = new Properties();
+    	try {
+    		props.load(new FileInputStream(PATH_TO_TEST_PROPERTIES));
+    	} catch (Exception e) {
+    	   logger.error("Error occured while reading mule.test.properties", e);
+    	} 
+    	TERMINATION_ID = props.getProperty("wday.termination.id");
+    	
     	helper = new BatchTestHelper(muleContext);
 		stopFlowSchedulers(POLL_FLOW_NAME);
 		registerListeners();
@@ -155,8 +167,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 			MuleEvent response = flow.process(getTestEvent(getEmployee(), MessageExchangePattern.REQUEST_RESPONSE));			
 			flow = getSubFlow("terminateWorkdayEmployee");
 			flow.initialise();
-			response = flow.process(getTestEvent(prepareTerminate(response), MessageExchangePattern.REQUEST_RESPONSE));
-			logger.info("response: " + response.getMessage().getPayloadAsString());						
+			flow.process(getTestEvent(prepareTerminate(response), MessageExchangePattern.REQUEST_RESPONSE));								
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -180,12 +191,14 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 		TerminateEmployeeRequestType req = (TerminateEmployeeRequestType) response.getMessage().getPayload();
 		TerminateEmployeeDataType eeData = req.getTerminateEmployeeData();		
 		TerminateEventDataType event = new TerminateEventDataType();
-		eeData.setTerminationDate(xmlDate(new Date()));
+		java.util.Calendar cal = java.util.Calendar.getInstance();
+		cal.add(java.util.Calendar.DATE, 1);
+		eeData.setTerminationDate(xmlDate(cal.getTime()));
 		EventClassificationSubcategoryObjectType prim = new EventClassificationSubcategoryObjectType();
 		List<EventClassificationSubcategoryObjectIDType> list = new ArrayList<EventClassificationSubcategoryObjectIDType>();
 		EventClassificationSubcategoryObjectIDType id = new EventClassificationSubcategoryObjectIDType();
 		id.setType("WID");
-		id.setValue("208082cd6b66443e801d95ffdc77461b");
+		id.setValue(TERMINATION_ID);
 		list.add(id);
 		prim.setID(list);
 		event.setPrimaryReasonReference(prim);

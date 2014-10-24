@@ -65,7 +65,7 @@ In order to have this template working as expected, you should be aware of your 
 
 ### As destination of data
 
-There are no particular considerations for this Anypoint Template regarding Siebel as data destination.
+There are no particular considerations for this Anypoint Template regarding Salesforce as data destination.
 
 
 ## Workday Considerations <a name="workdayconsiderations"/>
@@ -73,6 +73,7 @@ There are no particular considerations for this Anypoint Template regarding Sieb
 ### As source of data
 
 There are no particular considerations for this Anypoint Template regarding Workday as data origin.
+
 
 # Run it! <a name="runit"/>
 Simple steps to get Workday Salesforce Worker Case Broadcast running.

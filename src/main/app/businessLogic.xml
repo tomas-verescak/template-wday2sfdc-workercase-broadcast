@@ -4,7 +4,7 @@
       xmlns="http://www.mulesoft.org/schema/mule/core"
       xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
       xmlns:spring="http://www.springframework.org/schema/beans"
-      version="EE-3.5.0"
+      version="EE-3.6.2"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
@@ -19,12 +19,23 @@ http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mul
     <batch:job name="businessLogicBatch1">
         <batch:threading-profile poolExhaustedAction="WAIT"/>
         <batch:process-records>
-            <batch:step name="Map_Workday_Worker_To_Case">
+            <batch:step name="FindOrganizationName">
                 <enricher source="payload" target="recordVars['organizationName']" doc:name="Store 'organizationName' in recordVars">
-                    <component class="org.mule.templates.OrganizationExtractor" doc:name="Extract Organization Name"/>
+                    <expression-component doc:name="Extract Organization Name"><![CDATA[import java.util.List;
+import java.util.Map;
+
+name = null;
+
+for (Map org : payload['orgIds']){
+	if (org['id'] != null && org['id'].toLowerCase().contains('supervisory')){
+         name = org['name'];
+    }
+}
+payload = name;]]></expression-component>
+
                 </enricher>
-                <data-mapper:transform config-ref="List_WorkerType__To_List_Case_" doc:name="List&lt;WorkerType&gt; To List&lt;Case&gt;"/>
-                <set-payload value="#[payload[0]]" doc:name="Set Payload To Map"/>
+<!--                 <data-mapper:transform config-ref="List_WorkerType__To_List_Case_" doc:name="List&lt;WorkerType&gt; To List&lt;Case&gt;"/> -->
+
         
             </batch:step>
             <batch:step name="Get_Case_If_Exists" accept-expression="#[payload[&quot;ExtId__c&quot;] != null]">
@@ -33,14 +44,16 @@ http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mul
                 </enricher>
             </batch:step>
             <batch:step name="Get_Account_Id">
-                <flow-ref name="findOrCreateAccountFlow" doc:name="Trigger findOrCreateAccountFlow"/>
+                <flow-ref name="findOrCreateAccountFlow" doc:name="findOrCreateAccountFlow"/>
             </batch:step>
             <batch:step name="Get_Contact_Id">
-                <flow-ref name="findOrCreateContactFlow" doc:name="Trigger findOrCreateContactFlow"/>
+                <flow-ref name="findOrCreateContactFlow" doc:name="findOrCreateContactFlow"/>
             </batch:step>
             <batch:step name="Upsert_Case_To_Salesforce">
                 <expression-component doc:name="prepare for Upsert"><![CDATA[payload.put("Id", recordVars['caseInSalesforce'] is NullPayload ? null : recordVars['caseInSalesforce']['Id']);
-payload.put("Description", ${sfdc.description})]]></expression-component>
+payload.put("Description", ${sfdc.description});
+payload.remove('orgIds');
+payload.remove("LastModifiedDate");]]></expression-component>
                 <logger message="Case to be upserted: #[payload]" level="INFO" doc:name="Log Case map"/>
                 <batch:commit size="200" doc:name="Batch Commit">
                     <sfdc:upsert config-ref="Salesforce" externalIdFieldName="Id" type="Case" doc:name="Upsert Case">
@@ -55,13 +68,13 @@ payload.put("Description", ${sfdc.description})]]></expression-component>
             <logger message="Batch completed: #[payload]" level="INFO" doc:name="Log the batch results"/>
         </batch:on-complete>
     </batch:job>
-    <sub-flow name="findOrCreateContactFlow" doc:name="findOrCreateContactFlow" >
+    <sub-flow name="findOrCreateContactFlow"  >
        <enricher source="#[payload]" target="#[flowVars['contact']]" doc:name="store result in account">
               <sfdc:query-single config-ref="Salesforce" query="SELECT Id, Name FROM Contact WHERE Email = '#[payload['SuppliedEmail']]'" doc:name="query Account in  Salesforce Instance"/>
           </enricher>
           <choice doc:name="Choice">
               <when expression="#[flowVars['contact'] is NullPayload]">
-                  <flow-ref name="createContactFlow" doc:name="trigger CreateContactFlow"/>
+                  <flow-ref name="createContactFlow" doc:name="createContactFlow"/>
               </when>
               <otherwise>
                   <enricher target="#[recordVars['idOfContact']]" doc:name="store result in idOfContact">
@@ -72,7 +85,7 @@ payload.put("Description", ${sfdc.description})]]></expression-component>
           <expression-component doc:name="set ContactId"><![CDATA[payload['ContactId']= recordVars['idOfContact'];
 ]]></expression-component>            
     </sub-flow>
-	<sub-flow name="findOrCreateAccountFlow" doc:name="findOrCreateAccountFlow">
+	<sub-flow name="findOrCreateAccountFlow" >
         <choice doc:name="Choice">
             <when expression="#[recordVars['organizationName'] != null]">
                 <enricher source="#[payload]" target="#[flowVars['account']]" doc:name="store result in account">
@@ -80,7 +93,7 @@ payload.put("Description", ${sfdc.description})]]></expression-component>
                 </enricher>
                 <choice doc:name="Choice">
                     <when expression="#[flowVars['account'] is NullPayload]">
-                        <flow-ref name="createAccountFlow" doc:name="trigger CreateAccountFlow"/>
+                        <flow-ref name="createAccountFlow" doc:name="createAccountFlow"/>
                     </when>
                     <otherwise>
                         <enricher target="#[recordVars['idOfAccount']]" doc:name="store result in idOfAccount">
@@ -97,7 +110,7 @@ payload.put("Description", ${sfdc.description})]]></expression-component>
         </choice>
     </sub-flow>
     
-    <sub-flow name="createAccountFlow" doc:name="createAccountFlow">
+    <sub-flow name="createAccountFlow" >
         <enricher target="#[recordVars['idOfAccount']]" doc:name="store result in idOfAccount">
             <processor-chain doc:name="Processor Chain">
                 <expression-component doc:name="Expression"><![CDATA[payload = new java.util.ArrayList();
@@ -114,7 +127,7 @@ payload.add(account);]]></expression-component>
         </enricher>
     </sub-flow>
     
-    <sub-flow name="createContactFlow" doc:name="createContactFlow">
+    <sub-flow name="createContactFlow" >
         <enricher target="#[recordVars['idOfContact']]" doc:name="store result in idOfContact">
             <processor-chain doc:name="Processor Chain">
                 <expression-component doc:name="Expression"><![CDATA[contact = new java.util.HashMap();

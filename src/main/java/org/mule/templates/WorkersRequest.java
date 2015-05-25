@@ -23,18 +23,14 @@ import com.workday.hr.WorkerResponseGroupType;
 
 public class WorkersRequest {
 
-	public static GetWorkersRequestType create(Date startDate, int periodInMillis, int offset) throws ParseException, DatatypeConfigurationException {
+	public static GetWorkersRequestType create(GregorianCalendar startDate) throws ParseException, DatatypeConfigurationException {
 		
 		EffectiveAndUpdatedDateTimeDataType dateRangeData = new EffectiveAndUpdatedDateTimeDataType();
-		Calendar cal = Calendar.getInstance();
-		cal.setTime(startDate);
-		cal.add(Calendar.SECOND, - offset / 1000);
-		dateRangeData.setUpdatedThrough(xmlDate(cal.getTime()));
-		
-		cal.setTime(startDate);
-		cal.add(Calendar.SECOND, - (periodInMillis + offset) / 1000 );		
-		dateRangeData.setUpdatedFrom(xmlDate(cal.getTime()));
-		
+        GregorianCalendar current = new GregorianCalendar();
+        current.add(Calendar.SECOND, -1);
+        dateRangeData.setUpdatedFrom(getXMLGregorianCalendar(startDate));
+        dateRangeData.setUpdatedThrough(getXMLGregorianCalendar(current));
+        
 		TransactionLogCriteriaType transactionLogCriteria = new TransactionLogCriteriaType();
 		transactionLogCriteria.setTransactionDateRangeData(dateRangeData);
 		
@@ -55,10 +51,8 @@ public class WorkersRequest {
 		return getWorkersType;
 	}
 
-	private static XMLGregorianCalendar xmlDate(Date date) throws DatatypeConfigurationException {
-		GregorianCalendar gregorianCalendar = (GregorianCalendar) GregorianCalendar.getInstance();
-		gregorianCalendar.setTime(date);
-		return DatatypeFactory.newInstance().newXMLGregorianCalendar(gregorianCalendar);
+	private static XMLGregorianCalendar getXMLGregorianCalendar(GregorianCalendar date) throws DatatypeConfigurationException {
+		return DatatypeFactory.newInstance().newXMLGregorianCalendar(date);
 	}
-
+	
 }

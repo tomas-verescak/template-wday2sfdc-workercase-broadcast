@@ -6,18 +6,14 @@
 	<parent>
 		<groupId>org.mule.templates</groupId>
 		<artifactId>templates-tooling-parent-pom</artifactId>
-		<version>1.0.15</version>
+		<version>1.1.9</version>
 	</parent>
 
 	<artifactId>template-wday2sfdc-workercase-broadcast</artifactId>
 	<packaging>mule</packaging>
-	<version>1.1.0-SNAPSHOT</version>
+	<version>1.1.1-SNAPSHOT</version>
 	<name>template-wday2sfdc-workercase-broadcast Anypoint Template Project</name>
 
-	<properties>
-		<workday.version>3.0.0</workday.version>
-		<sfdc.version>5.4.8</sfdc.version>
-	</properties>
 	
 	<build>
 		<plugins>
@@ -31,22 +27,21 @@
                             <groupId>org.mule.modules</groupId>
                             <artifactId>mule-module-sfdc</artifactId>
                         </inclusion>
+                    <inclusion>
+                            <groupId>org.mule.modules</groupId>
+                            <artifactId>mule-module-workday-humanresources</artifactId>
+                        </inclusion>
                     </inclusions>
 				</configuration>
 			</plugin>
 		</plugins>
 	</build>
 
-	<dependencies>
-		<dependency>
-			<groupId>org.mule.modules</groupId>
-			<artifactId>mule-module-workday</artifactId>
-			<version>${workday.version}</version>
-		</dependency>
+	<dependencies>		
 		<dependency>
             <groupId>org.mule.modules</groupId>
             <artifactId>mule-module-sfdc</artifactId>
-            <version>5.4.8</version>
+            <version>${sfdc.version}</version>
         </dependency>
     <dependency>
             <groupId>com.mulesoft.muleesb.modules</groupId>
@@ -63,6 +58,22 @@
     <dependency>
             <groupId>org.mule.modules</groupId>
             <artifactId>mule-module-scripting</artifactId>
+            <version>${mule.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    <dependency>
+            <groupId>org.mule.modules</groupId>
+            <artifactId>mule-module-workday-humanresources</artifactId>
+            <version>${wday.hr.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mule.modules</groupId>
+            <artifactId>mule-module-workday-staffing</artifactId>
+            <version>${wday.hr.version}</version>
+        </dependency>
+    <dependency>
+            <groupId>com.mulesoft.muleesb.modules</groupId>
+            <artifactId>mule-module-data-mapper</artifactId>
             <version>${mule.version}</version>
             <scope>provided</scope>
         </dependency>

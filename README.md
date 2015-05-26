@@ -75,6 +75,10 @@ There are no particular considerations for this Anypoint Template regarding Sale
 There are no particular considerations for this Anypoint Template regarding Workday as data origin.
 
 
+
+
+
+
 # Run it! <a name="runit"/>
 Simple steps to get Workday Salesforce Worker Case Broadcast running.
 
@@ -131,7 +135,7 @@ In order to use this Mule Anypoint Template you need to configure properties (Cr
 + poll.startDelayMillis `500`
 + poll.offset `3000`
 
-+ watermark.default.expression `#[groovy: new Date(System.currentTimeMillis() - 10000)]`
++ watermark.default.expression `#[groovy: new GregorianCalendar(2015, Calendar.MAY, 22, 13, 00, 00)]`
 
 + sfdc.description `"Welcome Package"`
 

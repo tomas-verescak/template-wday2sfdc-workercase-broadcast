@@ -70,6 +70,7 @@
             <groupId>org.mule.modules</groupId>
             <artifactId>mule-module-workday-staffing</artifactId>
             <version>${wday.hr.version}</version>
+            <scope>test</scope>
         </dependency>
     <dependency>
             <groupId>com.mulesoft.muleesb.modules</groupId>

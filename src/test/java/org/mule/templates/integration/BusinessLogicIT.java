@@ -21,6 +21,8 @@ import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -54,6 +56,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 	private static final long TIMEOUT_MILLIS = 30000;
 	private static final long DELAY_MILLIS = 500;
 	private static final String PATH_TO_TEST_PROPERTIES = "./src/test/resources/mule.test.properties";
+	private static final Logger log = LogManager.getLogger(BusinessLogicIT.class);
 	
 	protected static final int TIMEOUT_SEC = 60;
 	private BatchTestHelper helper;
@@ -87,7 +90,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
     	try {
     		props.load(new FileInputStream(PATH_TO_TEST_PROPERTIES));
     	} catch (Exception e) {
-    	   logger.error("Error occured while reading mule.test.properties", e);
+    	   log.error("Error occured while reading mule.test.properties", e);
     	} 
     	TERMINATION_ID = props.getProperty("wday.termination.id");
     	
@@ -107,11 +110,10 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 		muleContext.registerListener(pipelineListener);
 	}
     
-    @SuppressWarnings("unchecked")
 	private void createTestDataInSandBox() throws MuleException, Exception {
 		SubflowInterceptingChainLifecycleWrapper flow = getSubFlow("hireEmployee");
 		flow.initialise();
-		logger.info("creating a workday employee...");
+		log.info("creating a workday employee...");
 		try {
 			flow.process(getTestEvent(prepareNewHire(), MessageExchangePattern.REQUEST_RESPONSE));						
 		} catch (Exception e) {
@@ -121,7 +123,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
     
     private List<Object> prepareNewHire(){
 		EXT_ID = "Bruce_" + System.currentTimeMillis();
-		logger.info("employee name: " + EXT_ID);
+		log.info("employee name: " + EXT_ID);
 		employee = new Employee(EXT_ID, "Willis1", EMAIL, "650-232-2323", "999 Main St", "San Francisco", "CA", "94105", "US", "o7aHYfwG", 
 				"2014-04-17-07:00", "2014-04-21-07:00", "QA Engineer", "San_Francisco_site", "Regular", "Full Time", "Salary", "USD", "140000", "Annual", "39905", "21440", EXT_ID);
 		List<Object> list = new ArrayList<Object>();
@@ -142,7 +144,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 		flow.initialise();
 		MuleEvent response = flow.process(getTestEvent(getEmployee(), MessageExchangePattern.REQUEST_RESPONSE));			
 		EmployeeType workerRes = (EmployeeType) response.getMessage().getPayload();
-		logger.info("worker id:" + workerRes.getEmployeeData().get(0).getEmployeeID());
+		log.info("worker id:" + workerRes.getEmployeeData().get(0).getEmployeeID());
 		
     	flow = getSubFlow("retrieveCaseSFDC");
     	flow.initialise();
@@ -161,7 +163,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
     
     private void deleteTestDataFromSandBox() throws MuleException, Exception {
 		// Delete the created users in SFDC
-    	logger.info("deleting test data...");
+    	log.info("deleting test data...");
 		SubflowInterceptingChainLifecycleWrapper deleteFlow = getSubFlow("deleteSFDC");
 		deleteFlow.initialise();
 

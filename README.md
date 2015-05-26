@@ -32,7 +32,7 @@ This Anypoint Template should serve as a foundation for the process of broadcast
 
 As implemented, this Anypoint Template leverages the [Batch Module](http://www.mulesoft.org/documentation/display/current/Batch+Processing).
 The batch job is divided in Input, Process and On Complete stages.
-During the Input stage the Anypoint Template will go to the Workday and query all the existing active workers that match the filter criteria. The criteria is based on manipulations within the given date range.
+During the Input stage the Anypoint Template will query Workday for all the existing active workers that match the filter criteria. The criteria is based on manipulations within the given date range.
 The last step of the Process stage will group the cases and create them in Salesforce.
 Finally during the On Complete stage the Anypoint Template will output statistics data into the console.
 
@@ -131,24 +131,25 @@ Mule Studio provides you with really easy way to deploy your Template directly t
 In order to use this Mule Anypoint Template you need to configure properties (Credentials, configurations, etc.) either in properties file or in CloudHub as Environment Variables. Detail list with examples:
 ### Application configuration
 #### Properties to be used across all the environments. They can be overwritten.
+
 + poll.frequencyMillis `10000`
 + poll.startDelayMillis `500`
 + poll.offset `3000`
-
 + watermark.default.expression `#[groovy: new GregorianCalendar(2015, Calendar.MAY, 22, 13, 00, 00)]`
-
 + sfdc.description `"Welcome Package"`
 
 #### Workday Connector configuration
+
 + wday.user `admin@workday`
 + wday.password `secret`
 + wday.endpoint `https://impl-cc.workday.com/ccx/service/workday/Human_Resources/v21.1`
 
 #### Salesforce Connector
+
 + sfdc.username `user@company.com`
 + sfdc.password `secret`
 + sfdc.securityToken `1234fdkfdkso20kw2sd`
-+ sfdc.url `https://login.salesforce.com/services/Soap/u/28.0`
++ sfdc.url `https://login.salesforce.com/services/Soap/u/32.0`
 
 # API Calls <a name="apicalls"/>
 Salesforce imposes limits on the number of API Calls that can be made. Therefore calculating this amount may be an important factor to consider. The Anypoint Template calls to the API can be calculated using the formula:

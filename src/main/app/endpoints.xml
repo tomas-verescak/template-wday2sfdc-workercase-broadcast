@@ -1,42 +1,97 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mule xmlns:data-mapper="http://www.mulesoft.org/schema/mule/ee/data-mapper" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
-xmlns:wd-hr="http://www.mulesoft.org/schema/mule/wd-hr"
-xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking"
-xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:http="http://www.mulesoft.org/schema/mule/http"
-xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-xmlns:spring="http://www.springframework.org/schema/beans" version="EE-3.6.2"
-xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+<mule xmlns:json="http://www.mulesoft.org/schema/mule/json" version="EE-3.7.0"
+	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw"
+	xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
+	xmlns:wd-hr="http://www.mulesoft.org/schema/mule/wd-hr"
+	xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking"
+	xmlns:batch="http://www.mulesoft.org/schema/mule/batch" 
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" 
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
 http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
 http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
 http://www.mulesoft.org/schema/mule/wd-hr http://www.mulesoft.org/schema/mule/wd-hr/current/mule-wd-hr.xsd
 http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
-http://www.mulesoft.org/schema/mule/ee/data-mapper http://www.mulesoft.org/schema/mule/ee/data-mapper/current/mule-data-mapper.xsd">
-    <data-mapper:config name="GetWorkersResponseType_To_Case" transformationGraphPath="getworkersresponsetype_to_case.grf" doc:name="GetWorkersResponseType_To_Case"/>
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd">
 
 
 	<flow name="triggerFlow" processingStrategy="synchronous"  >	
 		<poll doc:name="fireup Worker synchronization">
 		<fixed-frequency-scheduler frequency="${poll.frequencyMillis}"
 			startDelay="${poll.startDelayMillis}" />
-			<watermark variable="lastQueryDate" default-expression="${watermark.default.expression}" selector="FIRST" selector-expression="#[payload.LastModifiedDate]"/>
+			<watermark variable="lastQueryDate" default-expression="${watermark.default.expression}" update-expression="#[flowVars.updatedThrough]"/>
 			<processor-chain doc:name="query Workers">
 			<logger message="Fetching Workday updates...#[groovy: new Date().format('yyyy-MM-dd HH:mm:ss')]" level="INFO" doc:name="log 'Fetching workday updates...'"/>
-			<wd-hr:get-workers config-ref="WorkdayHumanResource"
-				doc:name="get Workers from Workday Human Resource"
-				workersRequest-ref="#[org.mule.templates.WorkersRequest.create(lastQueryDate)]"></wd-hr:get-workers>
-                <data-mapper:transform config-ref="GetWorkersResponseType_To_Case" doc:name="GetWorkersResponseType To Case">
-                    <data-mapper:input-arguments>
-                        <data-mapper:input-argument key="UpdatedThrough">#[payload.getRequestCriteria().getTransactionLogCriteriaData()[0].getTransactionDateRangeData().getUpdatedThrough()]</data-mapper:input-argument>
-                    </data-mapper:input-arguments>
-                </data-mapper:transform>
+                <dw:transform-message doc:name="Create Get Workers Request">
+                    <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+{
+	requestCriteria: {
+		excludeInactiveWorkers		: true,
+		excludeContingentWorkers	: false,
+		excludeEmployees			: false,
+		transactionLogCriteriaData: [
+			{
+				transactionDateRangeData: {
+					updatedFrom		: flowVars.lastQueryDate,
+					updatedThrough	: now - |PT6S|
+				}
+			}
+		]
+	},
+	
+	responseGroup: {
+		includeRoles				: true,
+		includePersonalInformation	: true,
+		includeOrganizations		: true, 
+		includeEmploymentInformation: true,
+		includeReference			: true
+	}
 
+} as :object {class: "com.workday.hr.GetWorkersRequestType"}
+]]></dw:set-payload>
+                </dw:transform-message>
 
+			<wd-hr:get-workers config-ref="WorkdayHumanResource" doc:name="get Workers from Workday Human Resource">
+			</wd-hr:get-workers>
 			</processor-chain>
 		</poll>
+        <set-variable variableName="updatedThrough" value="#[payload.getRequestCriteria().getTransactionLogCriteriaData().get(0).getTransactionDateRangeData().getUpdatedThrough()]" doc:name="Set updatedThrough"/>
+
+        <dw:transform-message doc:name="Workers to Cases">
+            <dw:set-payload><![CDATA[%dw 1.0
+%input payload application/java
+%output application/java
+%var response = payload as :object { class: "com.workday.hr.GetWorkersResponseType" }
+---
+response.responseData.worker map {
+	SuppliedName	: $.workerData.personalData.nameData.legalNameData.nameDetailData.lastName ++ 
+					  $.workerData.personalData.contactData.emailAddressData[0].emailAddress,
+	SuppliedEmail	: $.workerData.personalData.contactData.emailAddressData[0].emailAddress,
+	Status			: 'Working',
+	Origin			: 'Web',
+	Subject			: $.workerData.personalData.nameData.legalNameData.nameDetailData.firstName ++ ' ' ++ 
+	                  $.workerData.personalData.nameData.legalNameData.nameDetailData.lastName  ++ ' Case',
+	ExtId__c		: $.workerReference.ID[1].value,
+	
+	orgIds 			: $.workerData.organizationData.workerOrganizationData map {
+		id			: $.organizationData.organizationReferenceID,
+		name		: $.organizationData.organizationName,
+		type		: $.organizationData.organizationTypeReference.descriptor
+	} filter $.type == 'Supervisory'
+} unless (response.responseData is :null) otherwise []
+
+]]></dw:set-payload>
+        </dw:transform-message>
         <expression-filter expression="#[payload.size() &gt; 0]" doc:name="Filter empty result set"/>
+
 
 		        
 		<batch:execute name="businessLogicBatch" doc:name="execute businessLogicBatch"/>

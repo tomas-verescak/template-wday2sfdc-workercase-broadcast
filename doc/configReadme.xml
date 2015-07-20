@@ -22,7 +22,7 @@ Salesforce Customization: It is necessary to add a custom field ExtId (Text 255)
 		</section>
 		<section id="running_on_cloudhub">
 <![CDATA[
-Once your app is all set and started, there is no need to do anything else. Every time a custom object is created or modified, it will be automatically synchronised to SFDC Org B as long as it has an Email.
+Once your app is all set and started, there is no need to do anything else. Every time a custom object is created or modified, it will be automatically synchronised to SFDC Org B as long as it has an E-mail.
 ]]>
 		</section>
 		<section id="application_configuration">

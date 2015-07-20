@@ -56,7 +56,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 	private static final long TIMEOUT_MILLIS = 30000;
 	private static final long DELAY_MILLIS = 500;
 	private static final String PATH_TO_TEST_PROPERTIES = "./src/test/resources/mule.test.properties";
-	private static final Logger log = LogManager.getLogger(BusinessLogicIT.class);
+	private static final Logger LOG = LogManager.getLogger(BusinessLogicIT.class);
 	
 	protected static final int TIMEOUT_SEC = 60;
 	private BatchTestHelper helper;
@@ -90,14 +90,13 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
     	try {
     		props.load(new FileInputStream(PATH_TO_TEST_PROPERTIES));
     	} catch (Exception e) {
-    	   log.error("Error occured while reading mule.test.properties", e);
+    	   LOG.error("Error occured while reading mule.test.properties", e);
     	} 
     	TERMINATION_ID = props.getProperty("wday.termination.id");
     	
     	helper = new BatchTestHelper(muleContext);
 		stopFlowSchedulers(POLL_FLOW_NAME);
 		registerListeners();
-		
 		createTestDataInSandBox();
     }
 
@@ -113,7 +112,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 	private void createTestDataInSandBox() throws MuleException, Exception {
 		SubflowInterceptingChainLifecycleWrapper flow = getSubFlow("hireEmployee");
 		flow.initialise();
-		log.info("creating a workday employee...");
+		LOG.info("creating a workday employee...");
 		try {
 			flow.process(getTestEvent(prepareNewHire(), MessageExchangePattern.REQUEST_RESPONSE));						
 		} catch (Exception e) {
@@ -123,7 +122,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
     
     private List<Object> prepareNewHire(){
 		EXT_ID = "Bruce_" + System.currentTimeMillis();
-		log.info("employee name: " + EXT_ID);
+		LOG.info("employee name: " + EXT_ID);
 		employee = new Employee(EXT_ID, "Willis1", EMAIL, "650-232-2323", "999 Main St", "San Francisco", "CA", "94105", "US", "o7aHYfwG", 
 				"2014-04-17-07:00", "2014-04-21-07:00", "QA Engineer", "San_Francisco_site", "Regular", "Full Time", "Salary", "USD", "140000", "Annual", "39905", "21440", EXT_ID);
 		List<Object> list = new ArrayList<Object>();
@@ -144,7 +143,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 		flow.initialise();
 		MuleEvent response = flow.process(getTestEvent(getEmployee(), MessageExchangePattern.REQUEST_RESPONSE));			
 		EmployeeType workerRes = (EmployeeType) response.getMessage().getPayload();
-		log.info("worker id:" + workerRes.getEmployeeData().get(0).getEmployeeID());
+		LOG.info("worker id:" + workerRes.getEmployeeData().get(0).getEmployeeID());
 		
     	flow = getSubFlow("retrieveCaseSFDC");
     	flow.initialise();
@@ -163,7 +162,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
     
     private void deleteTestDataFromSandBox() throws MuleException, Exception {
 		// Delete the created users in SFDC
-    	log.info("deleting test data...");
+    	LOG.info("deleting test data...");
 		SubflowInterceptingChainLifecycleWrapper deleteFlow = getSubFlow("deleteSFDC");
 		deleteFlow.initialise();
 
@@ -207,7 +206,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 		TerminateEventDataType event = new TerminateEventDataType();
 		java.util.Calendar cal = java.util.Calendar.getInstance();
 		cal.add(java.util.Calendar.DATE, 1);
-		eeData.setTerminationDate(xmlDate(cal.getTime()));
+		eeData.setTerminationDate(getCalendar(cal.getTime()));
 		EventClassificationSubcategoryObjectType prim = new EventClassificationSubcategoryObjectType();
 		List<EventClassificationSubcategoryObjectIDType> list = new ArrayList<EventClassificationSubcategoryObjectIDType>();
 		EventClassificationSubcategoryObjectIDType id = new EventClassificationSubcategoryObjectIDType();
@@ -220,10 +219,10 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 		return req;		
 	}
 	
-	private static XMLGregorianCalendar xmlDate(Date date) throws DatatypeConfigurationException {
+	private static GregorianCalendar getCalendar(Date date) throws DatatypeConfigurationException {
 		GregorianCalendar gregorianCalendar = (GregorianCalendar) GregorianCalendar.getInstance();
 		gregorianCalendar.setTime(date);
-		return DatatypeFactory.newInstance().newXMLGregorianCalendar(gregorianCalendar);
+		return gregorianCalendar;
 	}
 	
 	

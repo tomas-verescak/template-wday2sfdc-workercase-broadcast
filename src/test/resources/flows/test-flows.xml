@@ -1,49 +1,306 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:wd-hr="http://www.mulesoft.org/schema/mule/wd-hr" 
-	xmlns:data-mapper="http://www.mulesoft.org/schema/mule/ee/data-mapper" 
+<mule version="EE-3.7.0"
+	xmlns:json="http://www.mulesoft.org/schema/mule/json" 
+	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" 
+	xmlns:wd-hr="http://www.mulesoft.org/schema/mule/wd-hr" 
 	xmlns:wd-staffing="http://www.mulesoft.org/schema/mule/wd-staffing" 
 	xmlns:sfdc="http://www.mulesoft.org/schema/mule/sfdc" 
 	xmlns="http://www.mulesoft.org/schema/mule/core" 
 	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
 	xmlns:spring="http://www.springframework.org/schema/beans" 
-	version="EE-3.6.2"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/sfdc http://www.mulesoft.org/schema/mule/sfdc/current/mule-sfdc.xsd
 http://www.mulesoft.org/schema/mule/wd-staffing http://www.mulesoft.org/schema/mule/wd-staffing/current/mule-wd-staffing.xsd
-http://www.mulesoft.org/schema/mule/ee/data-mapper http://www.mulesoft.org/schema/mule/ee/data-mapper/current/mule-data-mapper.xsd
-http://www.mulesoft.org/schema/mule/wd-hr http://www.mulesoft.org/schema/mule/wd-hr/current/mule-wd-hr.xsd">
+http://www.mulesoft.org/schema/mule/wd-hr http://www.mulesoft.org/schema/mule/wd-hr/current/mule-wd-hr.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd">
     <wd-staffing:config name="Workday_Staffing" staffingUser="${wday.user}" staffingPassword="${wday.password}" staffingEndpoint="${wday.endpoint}" doc:name="Workday Staffing">
         <wd-staffing:connection-pooling-profile initialisationPolicy="INITIALISE_ONE" exhaustedAction="WHEN_EXHAUSTED_GROW"/>
     </wd-staffing:config>
-    <data-mapper:config name="pojo_to_hireemployeerequesttype" transformationGraphPath="pojo_to_hireemployeerequesttype.grf" doc:name="DataMapper"/>
-    <data-mapper:config name="EmployeeType_To_TerminateEmployeeRequestType" transformationGraphPath="employeetype_to_terminateemployeerequesttype.grf" doc:name="DataMapper"/>
     
-    <sub-flow name="retrieveCaseSFDC" doc:name="retrieveCaseSFDC">
+    <sub-flow name="retrieveCaseSFDC" >
         <sfdc:query config-ref="Salesforce" query="dsql:SELECT Id,Subject,SuppliedEmail,AccountId,ContactId FROM Case WHERE ExtId__c = '#[payload]'" doc:name="Salesforce"/>
     </sub-flow>
-    <sub-flow name="hireEmployee" doc:name="hireEmployee">
-        <data-mapper:transform config-ref="pojo_to_hireemployeerequesttype" doc:name="Jobvite To HireEmployeeRequestType" />
+    <sub-flow name="hireEmployee" >
+        <dw:transform-message doc:name="Employee to Hire Employee Request Type">
+            <dw:set-payload><![CDATA[%dw 1.0
+%input payload application/java
+%output application/java
+%var employee = payload as :object {class: "com.mule.templates.utils.Employee"}
+
+%function countryMapping(inputCountry) {
+	workdayCountry: 'USA' when inputCountry == 'US' otherwise null
+} unless inputCountry is :null otherwise workdayCountry: null
+
+%function stateMapping(inputState) {
+	workdayState: 'USA-CA' when inputState == 'CA' otherwise null
+} unless inputState is :null otherwise workdayState: null
+
+%function locationMapping(inputLocation) {
+	workdayLocation: 'San_Francisco_site' when inputLocation == 'San_Francisco_site' otherwise null
+} unless inputLocation is :null otherwise workdayLocation: null
+
+%function posTimeTypeMapping(inputPosTimeType) {
+	(workdayPosTimeType: 'Full_Time') when inputPosTimeType == 'Full Time',
+	(workdayPosTimeType: 'Part_Time') when inputPosTimeType == 'Part Time'
+} unless inputPosTimeType is :null otherwise workdayPosTimeType: null
+
+%function payPlanMapping(payRateType) {
+	(workdayPayPlan: 'SALARY_Salary_Plan') when payRateType == 'Salary',
+	(workdayPayPlan: 'SALARY_Hourly_Plan') when payRateType == 'Hourly'
+} unless inputPosTimeType is :null otherwise workdayPayPlan: null
+--- 
+{
+	version: 'v20',
+	businessProcessParameters : {
+		autoComplete : true
+	},
+	hireEmployeeData : {
+		applicantData: {
+			externalIntegrationIDData: {
+				ID: [{
+					systemID	: 'Jobvite',
+				    value		: employee.id
+				    }]
+			},
+			personalData: {
+				contactData: {
+					addressData: [{
+						addressLineData: [{
+							type	: 'ADDRESS_LINE_1',
+							value	: employee.addr1
+
+						}],
+						countryReference: {
+							ID: [{
+								type	: 'ISO_3166-1_Alpha-3_Code',
+								value	: countryMapping(employee.country).workdayCountry
+							}]
+						},
+						countryRegionReference: {
+							ID: [{
+								type	: 'Country_Region_ID',
+								value	: stateMapping(employee.state).workdayState
+							}]
+						},
+						effectiveDate	: employee.hireDate as :date,
+						municipality 	: employee.city,
+						postalCode 		: employee.zip,
+						usageData: [{
+							typeData:[{
+								primary : true,
+								typeReference: {
+									id: [{
+										type	: 'Communication_Usage_Type_ID',
+										value	: 'HOME'
+									}]
+								}
+							}]
+						}]
+					}],
+					emailAddressData 	: [{
+						emailAddress	: employee.email,
+						usageData: [{
+							public: true,
+							typeData: [{
+								primary: true,
+								typeReference: {
+									id: [{
+										type	: 'Communication_Usage_Type_ID',
+										value	: 'HOME'
+									}]
+								}
+							}]
+						}]
+					}],
+					phoneData: [{
+						internationalPhoneCode: '1',
+						phoneDeviceTypeReference: {
+							id: [{
+								type	: 'Phone_Device_Type_ID',
+								value	: 1063.5
+							}]
+						},
+						phoneNumber		: employee.phone,
+						usageData: [{
+							public: true,
+							typeData: [{
+								primary: true,
+								typeReference: {
+									id: [{
+										type	: 'Communication_Usage_Type_ID',
+										value	: 'HOME'
+									}]
+								}
+							}]
+						}]
+					}]
+				}
+			},
+			nameData: {
+				legalNameData: {
+					nameDetailData: {
+						countryReference: {
+							ID: [{
+								type	: 'ISO_3166-1_Alpha-3_Code',
+								value	: countryMapping(employee.country).workdayCountry
+							}]
+						},
+						firstName	: employee.givenName,
+						lastName	: employee.familyName
+					}
+				}
+			},
+			hireDate: employee.hireDate as :date,
+			hireEmployeeEventData: {
+				employeeExternalIDData: {
+					externalID: [{
+						externalID: employee.id,
+						systemID: 'Salesforce - Chatter'
+					}]
+				},
+				employeeTypeReference: {
+			        ID: [{
+			            type: 'Employee_Type_ID',
+			            value: 'Regular'
+			        }]
+			    },
+			    firstDayOfWork: employee.startDate as :date,
+			    hireReasonReference: {
+			    	ID: [{
+			    		type	: 'General_Event_Subcategory_ID',
+			    		value	: 'Hire_Employee_New_Hire_Fill_Vacancy'
+			    	}]
+			    },
+			    positionDetails: {
+			    	positionTitle: employee.title,
+			    	defaultHours: 40,
+			    	scheduledHours: 40,
+			    	jobProfileReference: {
+			    		ID: [{
+			    			type: 'Job_Profile_ID',
+			    			value: employee.jobProfile
+			    		}]
+			    	},
+			    	locationReference: {
+			    		ID: [{
+			    			type: 'Location_ID',
+			    			value: locationMapping(employee.location).workdayLocation
+			    		}]
+			    	},
+			    	payRateTypeReference : {
+			    		ID : [{
+			    			type: 'Pay_Rate_Type_ID',
+			    			value: employee.payRateType
+			    		}]
+			    	},
+			    	positionTimeTypeReference : {
+			    		ID : [{
+			    			type: 'Position_Time_Type_ID',
+			    			value: posTimeTypeMapping(employee.posTimeType).workdayPosTimeTypeMapping
+			    		}]
+			    	}
+			    }
+			},
+			organizationReference: {
+				ID: [{
+					type: 'Organization_Reference_ID',
+					value: 'SUPERVISORY_ORGANIZATION-6-235'
+				}]
+			},
+			proposeCompensationForHireSubProcess: {
+				businessSubProcessParameters : {
+					autoComplete : true
+				},
+				proposeCompensationForHireData : {
+					compensationGuidelinesData : {
+						compensationGradeReference : {
+							ID: [{
+								type: 'Compensation_Grade_ID',
+								value: 'Non_Management'
+							}]
+						},
+						compensationPackageReference : {
+							ID : [{
+								type : 'Compensation_Package_ID',
+								value: 'Non_Management_Compensation_Package'
+							}]
+						}
+					}
+				},
+				payPlanData: {
+					payPlanSubData: [{
+						amount: employee.basePay,
+						currencyReference : {
+							ID : [{
+								type: 'Currency_ID',
+								value: employee.basePayCurrency
+							}]
+						},
+						frequencyReference : {
+							ID: [{
+								type : 'Frequency_ID',
+								value : employee.basePayFreq
+							}]
+						},
+						payPlanReference : {
+							ID : [{
+								type : 'Compensation_Plan_ID',
+								value: payPlanMapping(employee.payRateType).workdayPayPlan
+							}]
+						}
+					}],
+					'replace' : false
+				},
+				primaryCompensationBasis : employee.basePay
+			}
+		}
+	}
+	
+} as :object {class: "com.workday.staffing.HireEmployeeRequestType"}]]></dw:set-payload>
+        </dw:transform-message>
         <wd-staffing:hire-employee config-ref="Workday_Staffing" doc:name="Workday Staffing"/>
                     
     </sub-flow>
-    <sub-flow name="deleteSFDC" doc:name="deleteSFDC">
+    <sub-flow name="deleteSFDC" >
         <sfdc:delete config-ref="Salesforce" doc:name="Salesforce">
             <sfdc:ids ref="#[payload]"/>
         </sfdc:delete>
     </sub-flow>
-    <sub-flow name="getWorkdayEmployee" doc:name="getWorkdayEmployee">
+    <sub-flow name="getWorkdayEmployee" >
         <wd-hr:get-employee config-ref="WorkdayHumanResource" doc:name="Workday Human Resource"/>
     </sub-flow>
     
-    <sub-flow name="getWorkdaytoTerminateFlow" doc:name="getWorkdaytoTerminateFlow">
+    <sub-flow name="getWorkdaytoTerminateFlow" >
         <wd-hr:get-employee config-ref="WorkdayHumanResource" doc:name="Workday Human Resource"/>
-        <data-mapper:transform doc:name="EmployeeType To TerminateEmployeeRequestType" config-ref="EmployeeType_To_TerminateEmployeeRequestType"/>
+        <dw:transform-message doc:name="Employee Type to Terminate Employee Request Type">
+            <dw:set-payload><![CDATA[%dw 1.0
+%input payload application/java
+%output application/java
+%var response = payload as :object { class: "com.workday.hr.EmployeeType" }
+---
+{
+	version					: response.version as :string,
+	terminateEmployeeData 	: {
+		employeeReference	: {
+			descriptor		: response.employeeReference.integrationIDReference.descriptor,
+			ID				: response.employeeData map {
+				type		: "Employee_ID" as :string,
+				value		: $.employeeID as :string
+			} as :object {class: "com.workday.staffing.EmployeeObjectType"}
+		} 
+	}
+	
+} as :object {class: "com.workday.staffing.TerminateEmployeeRequestType"}
+unless (response.employeeData is :null) otherwise []]]></dw:set-payload>
+        </dw:transform-message>
+<!--         <data-mapper:transform doc:name="EmployeeType To TerminateEmployeeRequestType" config-ref="EmployeeType_To_TerminateEmployeeRequestType"/> -->
 	</sub-flow>
     
-    <sub-flow name="terminateWorkdayEmployee" doc:name="terminateWorkdayEmployee">
+    <sub-flow name="terminateWorkdayEmployee" >
     	<wd-staffing:terminate-employee config-ref="Workday_Staffing" doc:name="Workday Staffing" />
     </sub-flow>
     
